@@ -1,0 +1,130 @@
+HighlyDerivative = {}
+
+HighlyDerivative.filters = {}
+HighlyDerivative.derivations = {}
+HighlyDerivative.derivation_list = {}
+
+local Filter = require('__HighlyDerivative__/lib/filter.lua')
+local Derivation = require('__HighlyDerivative__/lib/derivation.lua')
+
+function HighlyDerivative._get_caller_source_file_name()
+  local info = debug.getinfo(3, "S")
+  local filename
+  if string.sub(info.source, 1, 1) == "@" then
+    filename = string.sub(info.source, 2)
+  else
+    error("don't know which mod called me!")
+  end
+  return filename
+end
+
+function HighlyDerivative.register_filter(args)
+  local filter = Filter:new(args)
+  local filters = HighlyDerivative.filters
+  local type = args.type
+  if not filters[type] then
+    filters[type] = {}
+  end
+  table.insert(filters[type], filter)
+  return filter
+end
+
+function HighlyDerivative.register_derivation(args)
+  local derivation_list = HighlyDerivative.derivation_list
+  local filters = args.filters
+  local derivations = HighlyDerivative.derivations
+
+  local derivation = Derivation:new(args)
+  table.insert(derivation_list, derivation)
+  local derivation_name = args.name
+
+  for _, filter in ipairs(filters) do
+    local filter_name = filter.name
+    if not derivations[filter_name] then
+      derivations[filter_name] = {}
+    end
+    derivations[filter_name][derivation_name] = true
+  end
+  return derivation
+end
+
+function HighlyDerivative._apply_filters(changed_filters, items)
+  local filters = HighlyDerivative.filters
+  for k, item in pairs(items) do
+    local hash = serpent.block(item)
+    local type = item.type
+    local filterList = filters[type]
+    for _, filter in ipairs(filterList) do
+      if filter:apply(item, hash) then
+        changed_filters[filter.name] = filter
+      end
+    end
+  end
+end
+
+function HighlyDerivative._handle_updated_derivations(changed_filters)
+  local derivations = HighlyDerivative.derivations
+  local derivation_list = HighlyDerivative.derivation_list
+  local changed_derivations = {}
+
+  for filter_name in pairs(changed_filters) do
+    local derivations_for_filter = derivations[filter_name]
+    for derivation_name in pairs(derivations_for_filter) do
+      changed_derivations[derivation_name] = true
+    end
+  end
+
+  log(serpent.block(changed_derivations))
+
+  for _, derivation in ipairs(derivation_list) do
+    local derivation_name = derivation.name
+    if changed_derivations[derivation_name] then
+      derivation:apply()
+    end
+  end
+
+  for filter_name, filter in pairs(changed_filters) do
+    filter:mark_applied()
+  end
+end
+
+--[[
+
+Mod A derives new x from y
+Mod B adds new_y, should feed new_y to Mod A.
+
+Mod A derives new_x from x; should not feed new_x into Mod A.
+
+Mod A derives new_y from x
+Mod B derives new_x from new_y; should not feed new_x to Mod A.
+
+]]
+
+function HighlyDerivative.derive()
+  log(HighlyDerivative._get_caller_source_file_name())
+  local data_raw = data.raw
+  local filters = HighlyDerivative.filters
+  local changed_filters = {}
+  for type, filterList in pairs(filters) do
+    HighlyDerivative._apply_filters(changed_filters, data_raw[type])
+  end
+  HighlyDerivative._handle_updated_derivations(changed_filters)
+end
+
+function HighlyDerivative.add_or_update(items)
+  log(HighlyDerivative._get_caller_source_file_name())
+  local changed_filters = {}
+  HighlyDerivative._apply_filters(changed_filters, items)
+  local data_raw = data.raw
+  for _, item in ipairs(items) do
+    local type = item.type
+    local name = item.name
+    if data_raw[type][name] then
+      data_raw[type][name] = nil
+    end
+  end
+  data:extend(items)
+  HighlyDerivative._handle_updated_derivations(changed_filters)
+end
+
+return HighlyDerivative

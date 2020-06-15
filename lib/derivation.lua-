@@ -1,0 +1,113 @@
+local Derivation = {}
+
+function Derivation:new(args)
+  if type(args.derivation) ~= "function" then
+    error("must supply derivation function")
+  elseif type(args.mod_name) ~= "string" then
+    error("must supply mod_name")
+  elseif type(args.name) ~= "string" then
+    error("must supply name")
+  end
+
+  local filters = args.filters
+  if type(filters) ~= "table" then
+    error("must supply filters")
+  end
+
+  if not #filters then
+    error("must supply at least one filter")
+  end
+
+  local o = {
+    name = args.name,
+    mod_name = args.mod_name,
+    filters = filters,
+    derivation = args.derivation,
+    args = args
+  }
+
+  o = setmetatable(o, self)
+  self.__index = self
+  return o
+end
+
+-- shamelessly stolen from https://rosettacode.org/wiki/Cartesian_product_of_two_or_more_lists#Lua
+local function cartesian_product(sets)
+  local item_counts = {}
+  local indices = {}
+  local results = {}
+  local set_count = #sets
+  local combination_count = 1
+
+  for set_index=set_count, 1, -1 do
+    local set = sets[set_index]
+    local items = set.items
+    local item_count = #items
+    item_counts[set_index] = item_count
+    indices[set_index] = 1
+    results[set_index] = items[1]
+    combination_count = combination_count * item_count
+  end
+
+  local combination_index = 0
+
+  log(serpent.block{
+    item_counts = item_counts,
+    indices = indices,
+    results = results,
+    set_count = set_count,
+    combination_count = combination_count
+  })
+
+  return function()
+    if combination_index >= combination_count then return end -- no more output
+
+    if combination_index == 0 then goto skip_update end -- skip first index update
+
+    indices[set_count] = indices[set_count] + 1
+
+    for set_index=set_count, 1, -1 do -- update index list
+      local set = sets[set_index]
+      local items = set.items
+      local index = indices[set_index]
+      if index <= item_counts[set_index] then
+        results[set_index] = items[index]
+        break -- no further update needed
+      else -- propagate item_counts overflow
+        results[set_index] = items[1]
+        indices[set_index] = 1
+        if set_index > 1 then
+          indices[set_index - 1] = indices[set_index - 1] + 1
+        end
+      end
+    end
+
+    ::skip_update::
+
+    combination_index = combination_index + 1
+
+    return combination_index, results
+  end
+end
+
+function Derivation:apply()
+  log(".")
+  log(serpent.block(self))
+  local derivation = self.derivation
+  local filters = self.filters
+  local seen = {}
+  -- TODO cartesian_product of pairs(...)
+  for _, product in cartesian_product(filters) do
+    local changed = false
+    for i, name in ipairs(product) do
+      if filters[i].changed[name] then
+        changed = true
+      end
+    end
+    if changed then
+      derivation(product)
+    end
+  end
+end
+
+return Derivation

@@ -1,0 +1,55 @@
+local Filter = {}
+
+function Filter:new(args)
+  if type(args.filter) ~= "function" then
+    error("must supply filter function")
+  elseif type(args.mod_name) ~= "string" then
+    error("must supply mod_name")
+  elseif type(args.type) ~= "string" then
+    error("must supply type")
+  elseif type(args.name) ~= "string" then
+    error("must supply name")
+  end
+
+  local o = {
+    mod_name = args.mod_name,
+    filter = args.filter,
+    name = args.name,
+    items = {},
+    changed = {},
+    args = args
+  }
+  o = setmetatable(o, self)
+  self.__index = self
+  return o
+end
+
+function Filter:apply(item, hash)
+  local items = self.items
+  local item_name = item.name
+  local old_hash = items[item_name]
+  if not self.filter(item) then
+    if old_hash then
+      log("Warning, the prototype below that used to match filter '" .. self.name .. "' no longer matches!")
+      log("prototype that matched:")
+      log(old_hash)
+      log("prototype that no longer matches:")
+      log(hash)
+      items[item_name] = nil
+    end
+    return false
+  end
+  if old_hash and old_hash == hash then return false end
+  self.changed[item_name] = true
+  items[item_name] = hash
+  return true
+end
+
+function Filter:mark_applied()
+  local changed = self.changed
+  for k in pairs(changed) do
+    changed[k] = nil
+  end
+end
+
+return Filter

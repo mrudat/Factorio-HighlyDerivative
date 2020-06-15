@@ -1,0 +1,4 @@
+local.mk
+info.mk
+build/
+*.code-workspace
