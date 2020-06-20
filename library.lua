@@ -186,11 +186,11 @@ end
 
 local Seen = {}
 
-local function index_thing2(thing_data, thing_name, thing_type, seen_type, indexes)
+local function index_thing2(thing_data, thing_name, thing_type, seen_type, indexes, reindex)
   local seen_thing = autovivify(seen_type, thing_name)
   local applied_indexes = seen_thing.applied_indexes
   for _, index in next, indexes, applied_indexes do
-    index(thing_data, thing_name, thing_type)
+    index(thing_data, thing_name, thing_type, reindex)
   end
   seen_thing.applied_indexes = #indexes
 end
@@ -205,7 +205,7 @@ local function index_thing(thing)
   local indexes = type_callbacks.index
   if not indexes then return end
   local seen_type = autovivify(Seen, thing_type)
-  index_thing2(thing, thing_name, thing_type, seen_type, indexes)
+  index_thing2(thing, thing_name, thing_type, seen_type, indexes, true)
   return
 end
 
@@ -220,7 +220,7 @@ function M.index(thing)
     if not indexes then goto next_type end
     local seen_type = autovivify(Seen, thing_type)
     for thing_name, thing_data in pairs(type_data) do
-      index_thing2(thing_data, thing_name, thing_type, seen_type, indexes)
+      index_thing2(thing_data, thing_name, thing_type, seen_type, indexes, true)
     end
     ::next_type::
   end
