@@ -34,9 +34,9 @@ HighlyDerivative.index(thing)
 
 ### mark_final(prototype)
 
-Marks `prototype` as 'final' which will prevent prototpe from being fed to any derivation callbacks.
+Marks `prototype` as 'final' which will prevent prototype from being fed to any derivation callbacks.
 
-Only needs name and type, so can be called ahead of time for a protoype that may not end up being created at all.
+Only needs name and type, so can be called ahead of time for a prototype that may not end up being created at all.
 
 ```lua
 HighlyDerivative.mark_final({
@@ -97,7 +97,7 @@ If `and_descendants` is true, the callback will be registered against every desc
 
 `callback` is expected to add newly created items to new_things, to allow the library to index, filter, and further derive more new things from `new_things`. All prototypes in `new_things` are fed to data:extend by the library.
 
-`callback` will be called exactly one for each prototype in data.raw; if you create a new item of the same type that the callback is registered for, the callback will be called for the new item as well.
+`callback` will be called exactly once for each prototype in data.raw; if you create a new item of the same type that the callback is registered for, the callback will be called for the new item as well.
 
 ```lua
 HighlyDerivative.register_derivation('item', function(new_things, item, item_name, item_type)
@@ -118,7 +118,7 @@ If `and_descendants` is true, the callback will be registered against every desc
 
 `callback` is expected to add newly created items to new_things, to allow the library to index and filter the `new_things`. All prototypes in `new_things` are fed to data:extend and mark_final by the library.
 
-`callback` will be called exactly one for each prototype in data.raw.
+`callback` will be called exactly once for each prototype in data.raw.
 
 ```lua
 HighlyDerivative.register_final_derivation('item', function(new_things, item, item_name, item_type)
@@ -152,7 +152,7 @@ end
 
 ### find_recipes_that_make(item)
 
-Inspects an index of `item.result`/`item.results` and returns a table of recipes that can make item.
+Inspects an index of `item.result`/`item.results` and returns a table of recipes that can make the item.
 
 ```lua
 local recipes = HighlyDerivative.find_recipes_that_make({
