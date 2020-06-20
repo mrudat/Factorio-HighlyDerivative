@@ -4,6 +4,8 @@ Date: TBA
 
   Features:
     - Initial release
+  Bugfixes:
+    - Fix dependencies to point to correct version of mod.
 
 ---------------------------------------------------------------------------------------------------
 Version: 0.0.1
